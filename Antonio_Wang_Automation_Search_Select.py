@@ -42,7 +42,7 @@ import requests
 import shutil
 
 
-GoogleSearch.SERP_API_KEY = "2d7a85845704f2371158b0b4c5239fec8e5e121e5667cdd10ee515cbf6b0b376"
+GoogleSearch.SERP_API_KEY = Your_google_serpapi_api_key
 DPI_min = 30
 Width_min = 600
 Height_min = 600
