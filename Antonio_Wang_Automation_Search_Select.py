@@ -1,51 +1,20 @@
 """
 object
     Se trata de automaticamente encontrar la imagen que pide usuario, y ofrecer varias funciones, puede ser mejorar la calidad, sacar waterproof...
-
-----------------------------------------------------------------------------------------------------------------------------------------------------
-0- add a clock que finaliza el programa si no funca
-
-1- Recibir el producto
-    1- Recibir el nombre
-
-2- Encontrar el producto en el internet
-    1- Encontrar links mas apropiados del productos (webscrapting or API)
-    2- Crear una carpeta basando la direccion
-    3- Bajar imagenes a traves de sus links correspondientes y guardarlos en la carpeta creada en 2-2
-
-3- Filters
-    1- Format Filter
-    2- info_list -> extract features of all images
-    3- DPI Filter
-    4- Resolution (width / height) Filter
-    5- Rename Filter
-
-4- Usuario Selecciona uno de los preferidos -> maybe use: TK, matplotlib
-    1- Usuario selecciona una imagen entre las opciones
-
-5- Automation Edit
 """
-
-
-
-import numpy as np
 import os
-import cv2 as cv
 import wget
 from serpapi import GoogleSearch
-import sys
-import datetime
-import time
 from tkinter import *
 from PIL import Image, ImageTk
-import requests
 import shutil
 
 
-GoogleSearch.SERP_API_KEY = Your_google_serpapi_api_key
-DPI_min = 30
-Width_min = 600
-Height_min = 600
+GoogleSearch.SERP_API_KEY = "Your_serpapi_api_key"
+producto_nombre = ""
+dpi_limit = 0
+width_limit = 0
+height_limit = 0
 image_selected = {
                     "Filedir": None,
                     "Filename": None,
@@ -55,81 +24,15 @@ image_selected = {
                     "Image Format": None,
                     "Image Mode": None
                 }
+fue_seleccionado = False
 
-#main
-#to improve:
-#   1- need interface for dpi and resolution
-#   2- need interface for "5", edit process OKKKKKK
-#   3- do a clock on searching process -> https://stackoverflow.com/questions/492519/timeout-on-a-function-call
-#   4- find more edit tools and maybe improve use of APIs Naaaa
-#   5- google search method to let the searching more p
+# to improve:
+#   1- do multiprocess to act like a clock for google search
+#   2- google search method to let the searching more p
 
 def main():
-    ventana = Tk()
-
-    screen_width = ventana.winfo_screenwidth()
-    screen_height = ventana.winfo_screenheight()
-
-    screen_size = "{}{}{}".format(screen_width, "x", screen_height)
-
-    ventana.geometry(screen_size)
-    ventana.title("Elegir modo")
-
-    button_width = 20
-    button_height = 5
-
-    search_select_x = screen_width / 4 * 1 - button_width
-    search_select_y = screen_height / 2 - button_height * 4
-
-    edit_x = screen_width / 4 * 3 - button_width
-    edit_y = search_select_y
-
-    quit_x = screen_width - button_width * 8
-    quit_y = 0
-
-    search_select_botton = Button(ventana, text="Modo search select", command=lambda : modo_search_select(ventana),
-                                 height=button_height, width=button_width)
-    search_select_botton.place(x=search_select_x, y=search_select_y)
-    edit_botton = Button(ventana, text="Modo edit", command=lambda: modo_editar(ventana),
-                              height=button_height, width=button_width)
-    edit_botton.place(x=edit_x, y=edit_y)
-    Quit = Button(ventana, text="Quit", command=ventana.destroy, height=button_height, width=button_width)
-    Quit.place(x=quit_x, y=quit_y)
-
-    ventana.mainloop()
-
-#0
-def setAClock():
-    Hour = 0
-    Minute = 1
-    Second = 0
-
-    now = datetime.datetime.now()
-    hour_now = now.hour
-    minute_now = now.minute
-    second_now = now.second
-
-    Sum_now = hour_now * 3600 + minute_now * 60 + second_now
-    Sum = Hour * 3600 + Minute * 60 + Second
-
-    Sum_Predict = Sum_now + Sum
-
-    Hour_Predict = int(Sum_Predict / 3600)
-    RestHour_Predict = Sum_Predict % 3600
-    Minute_Predict = int(RestHour_Predict / 60)
-    Second_Predict = RestHour_Predict % 60
-
-    print("{}{}{}{}{}".format(Hour_Predict, ":", Minute_Predict, ":", Second_Predict))
-
-    for i in range(Sum):
-        TrueHour = int((Sum - i) / 3600)
-        RestHour = (Sum - i) % 3600
-        TrueMinute = int(RestHour / 60)
-        TrueSecond = RestHour % 60
-        print("{}{}{}{}{}".format(TrueHour, ":", TrueMinute, ":", TrueSecond))
-        time.sleep(1)
-
-    sys.exit()
+    limpiar_tmp_file()
+    menu_principal()
 
 #0-1
 def crearUnaCarpetaPadre(dir):
@@ -138,7 +41,7 @@ def crearUnaCarpetaPadre(dir):
 
 #1-1
 def recibirNombreDeProducto():
-    productoName = input("输入产品名称: ")
+    productoName = input("input the product name: ")
     return productoName
 
 #2-1
@@ -147,10 +50,9 @@ def encontrarLinksDeProducto(productoName, dir):
     for image_result in search.get_dict()['images_results']:
         link = image_result["original"]
         try:
-            print("link: " + link)
             transformarLinkAImagen(link, dir)
         except:
-            pass
+            print("error")
     print("images found")
 
 #2-2
@@ -225,14 +127,14 @@ def extract_features(dir, info_list):
 
 #3-3
 # filter dpi
-def dpi_Filter(all_info_list, requerido):
-    if requerido:
+def dpi_Filter(all_info_list):
+    if int(dpi_limit) != 0:
         new_list = []
         print("dpi filter")
         for file in all_info_list:
             file_path = file_path_shortcut(file)
             if "Image DPI" in file:
-                if file["Image DPI"][0] > DPI_min:
+                if file["Image DPI"][0] > int(dpi_limit):
                     new_list.append(file)
                 else:
                     os.remove(file_path)
@@ -250,7 +152,7 @@ def resolution_Filter(dpi_info_list):
     print("resolution filter")
     for file in dpi_info_list:
         file_path = file_path_shortcut(file)
-        if file["Image Height"] > Height_min and file["Image Width"] > Width_min:
+        if file["Image Height"] > height_limit and file["Image Width"] > width_limit:
             new_list.append(file)
         else:
             os.remove(file_path)
@@ -373,37 +275,71 @@ def ckeckear_root(rename_info_list, position, max_position, root):
         except:
             pass
 
+def menu_principal():
+    ventana = Tk()
+
+    screen_width = ventana.winfo_screenwidth()
+    screen_height = ventana.winfo_screenheight()
+
+    screen_size = "{}{}{}".format(screen_width, "x", screen_height)
+
+    ventana.geometry(screen_size)
+    ventana.title("Choose mode")
+
+    button_width = 20
+    button_height = 5
+
+    search_select_x = screen_width / 4 * 1 - button_width
+    search_select_y = screen_height / 2 - button_height * 4
+
+    edit_x = screen_width / 4 * 3 - button_width
+    edit_y = search_select_y
+
+    quit_x = screen_width - button_width * 8
+    quit_y = 0
+
+    search_select_botton = Button(ventana, text="search select mode ", command=lambda: modo_search_select(ventana),
+                                  height=button_height, width=button_width)
+    search_select_botton.place(x=search_select_x, y=search_select_y)
+    edit_botton = Button(ventana, text="edit modo", command=lambda: modo_editar(ventana),
+                         height=button_height, width=button_width)
+    edit_botton.place(x=edit_x, y=edit_y)
+    Quit = Button(ventana, text="Quit", command=ventana.destroy, height=button_height, width=button_width)
+    Quit.place(x=quit_x, y=quit_y)
+
+    ventana.mainloop()
+
 def modo_editar(ventana):
     ventana.destroy()
 
-    folder_padre = os.getcwd()
-    folder_input = os.path.join(folder_padre, "LR")
-    folder_guardados = os.path.join(folder_padre, "imagenes_finalizados")
+    if fue_seleccionado:
+        folder_padre = os.getcwd()
+        folder_input = os.path.join(folder_padre, "LR")
+        folder_guardados = os.path.join(folder_padre, "imagenes_finalizados")
 
-    print(folder_input)
-    print(image_selected["Filename"])
+        name = os.path.split(image_selected["Filename"])[1]
 
-    name = os.path.split(image_selected["Filename"])[1]
+        image_to_move = os.path.join(folder_guardados, name)
 
-    print(name)
-    image_to_move = os.path.join(folder_guardados, name)
+        if os.listdir(folder_input) == 0:
+            try:
+                shutil.move(image_to_move, folder_input)
+            except shutil.Error:
+                print("error")
+        else:
+            for file in os.listdir(folder_input):
+                path = os.path.join(folder_input, file)
+                os.remove(path)
+            try:
+                shutil.move(image_to_move, folder_input)
+            except shutil.Error:
+                print("error")
 
-    if os.listdir(folder_input) == 0:
-        try:
-            shutil.move(image_to_move, folder_input)
-        except shutil.Error:
-            print("error")
+        print(1)
+        import Antonio_Wang_Automation_Edit
     else:
-        for file in os.listdir(folder_input):
-            path = os.path.join(folder_input, file)
-            print(path)
-            os.remove(path)
-        try:
-            shutil.move(image_to_move, folder_input)
-        except shutil.Error:
-            print("error")
-
-    import Antonio_Wang_Automation_Edit
+        print(2)
+        import Antonio_Wang_Automation_Edit
 
 def modo_search_select(ventana):
     ventana.destroy()
@@ -412,23 +348,24 @@ def modo_search_select(ventana):
     folder_finish = "imagenes_finalizados"
     folder_to_finish = os.path.join(folder_padre, folder_finish)
     folder_to_move = os.path.join(folder_padre, folder_name)
-    print(folder_to_move)
 
     info_list = []
-    DPIrequerido = True
 
-    productoName = recibirNombreDeProducto()
+    menu_ingresar_datos()
+
+    productoName = producto_nombre
     crearUnaCarpetaPadre(folder_to_move)
 
     folder_to_move = updateDir(folder_to_move, productoName)
     crearUnaCarpetaHija(folder_to_move)
+
     encontrarLinksDeProducto(productoName, folder_to_move)
 
     format_Filter(folder_to_move)
 
     all_info_list = extract_features(folder_to_move, info_list)
 
-    dpi_info_list = dpi_Filter(all_info_list, DPIrequerido)
+    dpi_info_list = dpi_Filter(all_info_list)
     resolution_info_list = resolution_Filter(dpi_info_list)
     rename_info_list = rename_Filter(resolution_info_list, productoName)
 
@@ -443,7 +380,105 @@ def modo_search_select(ventana):
     except:
         print("image already exist")
 
-    main()
+    global fue_seleccionado
+    fue_seleccionado = True
+
+    menu_principal()
+
+def limpiar_tmp_file():
+    path_padre = os.getcwd()
+    for file in path_padre:
+        path_file = os.path.join(path_padre, file)
+        extention = os.path.splitext(file)
+        if extention == ".tmp":
+            os.remove(path_file)
+        else:
+            pass
+
+def aparecer_el_input(Dpi_limit, entry_x, dpi_y):
+    Dpi_limit.place(x=entry_x, y=dpi_y)
+
+def recibir_valores(ventana_ingreso, Producto_name, Dpi_limit, Width_limit, Height_limit):
+    global producto_nombre
+    global dpi_limit
+    global height_limit
+    global width_limit
+    producto_nombre = Producto_name.get()
+    dpi_limit_miau = Dpi_limit.get()
+    try:
+        dpi_limit = int(dpi_limit_miau)
+    except:
+        dpi_limit = 0
+
+    width_limit_miau = Width_limit.get()
+    width_limit = int(width_limit_miau)
+    height_limit_miau = Height_limit.get()
+    height_limit = int(height_limit_miau)
+
+    ventana_ingreso.destroy()
+
+def menu_ingresar_datos():
+    ventana_ingreso = Tk()
+
+    screen_width = ventana_ingreso.winfo_screenwidth()
+    screen_height = ventana_ingreso.winfo_screenheight()
+
+    screen_size = "{}{}{}".format(screen_width, "x", screen_height)
+
+    ventana_ingreso.geometry(screen_size)
+    ventana_ingreso.title("input information")
+
+    button_width = 20
+    button_height = 5
+
+    label_x = screen_width / 4 * 1
+    entry_x = screen_width / 4 * 3
+
+    dpi_yes = entry_x - button_width * 8
+    dpi_no = entry_x + button_width * 8
+
+    product_y = screen_height / 6 * 1
+    width_y = screen_height / 6 * 2
+    height_y = screen_height / 6 * 3
+    dpi_YoN_y = screen_height / 6 * 4
+    dpi_y = screen_height / 6 * 5
+
+    listo_x = screen_width - button_width * 8
+    listo_y = screen_height - button_height - 120
+
+    quit_x = screen_width - button_width * 8
+    quit_y = 0
+
+    Label_Product = Label(ventana_ingreso, text="Ingrese nombre de producto: ", font=(25))
+    Label_Product.place(x = label_x, y= product_y)
+    Label_Width = Label(ventana_ingreso, text="Ingrese width: ", font=(25))
+    Label_Width.place(x = label_x, y = width_y)
+    Label_Height = Label(ventana_ingreso, text="Ingrese height: ", font=(25))
+    Label_Height.place(x = label_x, y= height_y)
+    Label_DPI = Label(ventana_ingreso, text="Ingrese DPI: ", font=(25))
+    Label_DPI.place(x= label_x, y=dpi_YoN_y)
+
+    Producto_name = Entry(ventana_ingreso, font=(25))
+    Producto_name.place(x=entry_x, y=product_y)
+
+    Width_limit = Entry(ventana_ingreso, font=(25))
+    Width_limit.place(x=entry_x, y=width_y)
+
+    Height_limit = Entry(ventana_ingreso, font=(25))
+    Height_limit.place(x=entry_x, y=height_y)
+
+    Dpi_limit = Entry(ventana_ingreso, font=(25))
+
+    button_dpi_yes = Button(ventana_ingreso, text="yes, existe dpi limit", command = lambda : aparecer_el_input(Dpi_limit, entry_x, dpi_y), height=button_height, width=button_width)
+    button_dpi_yes.place(x=dpi_yes, y=dpi_YoN_y)
+    button_dpi_no = Button(ventana_ingreso, text="no, no necesito dpi", command=None, height=button_height, width=button_width)
+    button_dpi_no.place(x=dpi_no, y=dpi_YoN_y)
+    button_listo = Button(ventana_ingreso, text="dale, ingresa valores", command= lambda : recibir_valores(ventana_ingreso, Producto_name, Dpi_limit, Width_limit, Height_limit), height=button_height, width=button_width)
+    button_listo.place(x=listo_x, y=listo_y)
+
+    Quit = Button(ventana_ingreso, text="Quit", command=ventana_ingreso.destroy, height=button_height, width=button_width)
+    Quit.place(x=quit_x, y=quit_y)
+
+    mainloop()
 
 main()
-
