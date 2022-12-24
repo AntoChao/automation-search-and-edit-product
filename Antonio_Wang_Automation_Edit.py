@@ -8,18 +8,10 @@
 """
 
 import os
-import cv2 as cv
-import wget
-from serpapi import GoogleSearch
-import sys
-import datetime
-import time
 from tkinter import *
 from PIL import Image, ImageTk
 import requests
 import shutil
-#from super_resolution import cartoon_upsampling_8x
-import torch
 
 
 #2-0
@@ -51,7 +43,7 @@ def remove_background(image_path):
             'https://api.remove.bg/v1.0/removebg',
             files={'image_file': open(image_path, 'rb')},
             data={'size': 'auto'},
-            headers={'X-Api-Key': 'P4MrwgeuLSeZU3fJ8nQYXAXj'},
+            headers={'X-Api-Key': 'Your_API_Key'},
         )
 
         if response.status_code == requests.codes.ok:
